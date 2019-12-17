@@ -10,4 +10,4 @@
 #SBATCH --output=./slurm_train_%j.out
 
 cd /scratch/vvg239/headcam
-python metric_learning.py
+python downstream.py
