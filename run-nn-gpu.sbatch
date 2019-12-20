@@ -1,13 +1,13 @@
 #!/bin/bash
-#SBATCH --cpus-per-task=4
-#SBATCH --nodes=1
-#SBATCH --gres=gpu:p40:1
-#SBATCH --time=48:00:00
-#SBATCH --mem=50GB
+
 #SBATCH --job-name=nn-gpu
+#SBATCH --cpus-per-task=1
+#SBATCH --gres=gpu:1
+#SBATCH --nodes=1
+#SBATCH --mem=40GB
+#SBATCH --time=24:00:00
 #SBATCH --mail-type=END
 #SBATCH --mail-user=vvg239@nyu.edu
-#SBATCH --output=./slurm_train_%j.out
 
-cd /scratch/vvg239/headcam
-python downstream.py
+cd /misc/vlgscratch4/LakeGroup/vaibhav/saycam-metric-learning
+python -u  downstream.py
