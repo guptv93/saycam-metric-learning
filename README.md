@@ -1,8 +1,3 @@
-# saycam-metric-learning
-Applying Metric Learning (with Contrastive Loss) on Infant Vision Data
+# Metric Learning on Saycam Dataset
 
-The mnist_model.py consists of our reduced neural model (consisting of 2 conv layers and 1 fully connected layer). The N Pair Ranking Loss has been implemented in metric_learning.ipynb. The checkpoint file can be loaded from this link:
-https://drive.google.com/open?id=1JBvlHaZKen4ztgDZc-7dbdpxBEu9D1sP
-
-
-The downstream task has been implemented in downstream.ipynb. Place the checkpoint file in a folder named `archive` created in the root directory. The downstream.ipynb will pick it up automatically.
+The project focuses on making a neural network learn from the same visuals that a human child comes across during its cognitive development. To achieve this, we use video data collected over a period of 2 years from cameras mounted on various human subjects (6-32 mo). Our approach is based on Self Supervised Metric Learning with N-Pair Multi-class Ranking Loss. 
