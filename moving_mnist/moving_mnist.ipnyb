@@ -1,0 +1,191 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "'''Moving MNIST generation code (modified from code by Prateek Mahajan:\n",
+    "https://gist.github.com/praateekmahajan/b42ef0d295f528c986e2b3a0b31ec1fe)'''\n",
+    "import math\n",
+    "import os\n",
+    "import sys\n",
+    "import numpy as np\n",
+    "import mnist\n",
+    "import matplotlib.pylab as plt\n",
+    "from PIL import Image\n",
+    "from IPython.display import clear_output\n",
+    "from time import sleep\n",
+    "\n",
+    "COLOR_MAT = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1]])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def plot_videoframes(frames):\n",
+    "    for i in range(frames.shape[0]):\n",
+    "        plt.imshow(frames[i, :, :, :], interpolation='nearest')\n",
+    "        plt.show()\n",
+    "        sleep(0.001)\n",
+    "        clear_output(wait=True)\n",
+    "\n",
+    "    plt.close()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def generate_moving_mnist(training, dest, shape=(64, 64), num_frames=30, original_size=28, noise=0.0):\n",
+    "    '''\n",
+    "    Args:\n",
+    "        training: Boolean, used to decide if downloading/generating train set or test set\n",
+    "        shape: Shape we want for our moving images (new_width and new_height)\n",
+    "        num_frames: Number of frames in a particular movement/animation/gif\n",
+    "        original_size: Real size of the images (eg: MNIST is 28 x 28)\n",
+    "    Returns:\n",
+    "        Nothing. Creates digit folders in dest folder.\n",
+    "    '''\n",
+    "    global COLOR_MAT\n",
+    "\n",
+    "    if training:\n",
+    "        dest = dest + \"/imgs_train\"\n",
+    "    else:\n",
+    "        dest = dest + \"/imgs_valid\"\n",
+    "            \n",
+    "    x_train, t_train, x_test, t_test = mnist.load()\n",
+    "    x_train = x_train / 255\n",
+    "    x_test = x_test / 255\n",
+    "\n",
+    "    if training:\n",
+    "        X = x_train\n",
+    "        Y = t_train\n",
+    "    else:\n",
+    "        X = x_test\n",
+    "        Y = t_test\n",
+    "\n",
+    "    X = np.reshape(X, (-1, original_size, original_size))\n",
+    "\n",
+    "    width, height = shape\n",
+    "\n",
+    "    # Get how many pixels can we move around a single image\n",
+    "    lims = (x_lim, y_lim) = width - original_size, height - original_size\n",
+    "\n",
+    "    for digit_idx in range(10):\n",
+    "        \n",
+    "        # Create array to store frames of a single video\n",
+    "        frames = np.float32(noise * np.random.rand(num_frames, width, height, 3))\n",
+    "        \n",
+    "        # Randomly generate direction, speed and velocity for both images\n",
+    "        direc = np.pi * (np.random.rand(1) * 2 - 1)\n",
+    "        speed = np.random.randint(5) + 2\n",
+    "        veloc = (speed * math.cos(direc), speed * math.sin(direc))\n",
+    "\n",
+    "        indices = np.argwhere(Y == digit_idx)\n",
+    "        new_X = np.empty((original_size, original_size, 3), dtype=np.float32)\n",
+    "\n",
+    "        # Generate tuple of (x,y) i.e initial position\n",
+    "        position = (np.random.rand() * x_lim, np.random.rand() * y_lim)\n",
+    "        \n",
+    "        # Generate new frames for the entire num_frames\n",
+    "        for frame_idx in range(num_frames):\n",
+    "            if frame_idx % 5 == 0:\n",
+    "                curr_color = np.random.randint(0, COLOR_MAT.shape[0])\n",
+    "                curr_index = np.random.randint(0, indices.shape[0])\n",
+    "                curr_X = X[indices[curr_index]]\n",
+    "                for i in range(3):\n",
+    "                    new_X[:, :, i] = curr_X[:, :] * COLOR_MAT[curr_color, i]\n",
+    "\n",
+    "            # Add the canvas to the dataset array, ceheck this part\n",
+    "            start_x, end_x = int(position[0]), int(position[0] + original_size)\n",
+    "            start_y, end_y = int(position[1]), int(position[1] + original_size)\n",
+    "\n",
+    "            frames[frame_idx, start_x:end_x, start_y:end_y, :] += new_X\n",
+    "\n",
+    "            # Get the next position by adding velocity\n",
+    "            next_pos = position[0] + veloc[0], position[1] + veloc[1]\n",
+    "\n",
+    "            # Iterate over velocity and see if we hit the wall\n",
+    "            # If we do then change direction\n",
+    "            for j, coord in enumerate(next_pos):\n",
+    "                if coord < 0 or coord > lims[j] + 1:\n",
+    "                    veloc = list(list(veloc[:j]) + [-1 * veloc[j]] + list(veloc[j + 1:]))\n",
+    "\n",
+    "            # Make the permanent change to position by adding updated velocity\n",
+    "            position = position[0] + veloc[0], position[1] + veloc[1]\n",
+    "        #plot_videoframes(frames)\n",
+    "        os.mkdir(\"{}/{}\".format(dest, digit_idx))\n",
+    "        np.save(\"{0}/{1}/video_{1}.npy\".format(dest, digit_idx), frames)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "dest = \"/misc/vlgscratch4/LakeGroup/vaibhav/data/moving_mnist\"\n",
+    "generate_moving_mnist(training=False, dest=dest, shape=(84, 84), num_frames=100, original_size=28, noise=0.0)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/png": "iVBORw0KGgoAAAANSUhEUgAAAPsAAAD7CAYAAACscuKmAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAADh0RVh0U29mdHdhcmUAbWF0cGxvdGxpYiB2ZXJzaW9uMy4xLjIsIGh0dHA6Ly9tYXRwbG90bGliLm9yZy8li6FKAAAPjklEQVR4nO3df6zddX3H8ed7LcgPlf5w1K4ttoQGxGUU1yANZmEwpGMKJio/oglOJv8IAzYjLTNMpiQzLgqJSNIAji2MH9aitSYKqzhmNOWHZRtQCkVA2vQHk5bBZoDCe3+c7zk95d7b+733nHPvOffzfCQ35/P9nF+fk9NXP9/zPd/zeUdmImnq+53JHoCkiWHYpUIYdqkQhl0qhGGXCmHYpUJ0FPaIWB4RmyNiS0Ss6NagJHVfjPd79oiYBjwJnAFsBR4ELsjMx7s3PEndMr2D+54EbMnMXwFExB3AOcCIYY8Iz+CReiwzY7j+Tnbj5wHPt21vrfok9aFOZvZaIuJi4OJeP4+kA+sk7NuABW3b86u+/WTmKmAVuBsvTaZOduMfBBZHxKKIOBg4H1jbnWFJ6rZxz+yZuTciLgF+DEwDbsnMx7o2MkldNe6v3sb1ZO7GSz3Xi6PxkgaIYZcKYdilQhh2qRCGXSqEYZcKYdilQhh2qRCGXSqEYZcKYdilQhh2qRCGXSqEYZcKYdilQhh2qRCGXSrEqGGPiFsiYldEPNrWNysi7o2Ip6rLmb0dpqRO1ZnZ/xFY/pa+FcD6zFwMrK+2JfWxUcOemfcDL76l+xzg1qp9K/DRLo9LUpeN9zP7nMzcXrV3AHO6NB5JPdJxRZjMzAOtGmtFGKk/jHdm3xkRcwGqy10j3TAzV2Xm0sxcOs7nktQF4w37WuDCqn0h8P3uDEdSr4xaJCIibgdOBd4F7AT+FvgecBdwFPAccG5mvvUg3nCPZZEIqcdGKhJhRRhpirEijFQ4wy4VwrBLhTDsUiEMu1QIwy4VwrBLhTDsUiEMu1QIwy4VwrBLhTDsUiEMu1QIwy4VwrBLhTDsUiEMu1SIOhVhFkTEfRHxeEQ8FhGXVf1WhZEGSJ016OYCczPzlxHxDuBhGkUhPg28mJl/HxErgJmZeeUoj+WyVFKPjXtZqszcnpm/rNovA5uAeVgVRhooYyoSERELgROBDdSsCmORCKk/1F5dNiLeDvwbcG1mromIPZk5o+363Zl5wM/t7sZLvdfR6rIRcRDwXeC2zFxTddeuCiNp8tU5Gh/AzcCmzPx621VWhZEGSJ2j8R8E/h34L+DNqvsqGp/bx1QVxt14qfesCCMVwoowUuEMu1QIwy4VwrBLhTDsUiEMu1QIwy4VwrBLhTDsUiEMu1QIwy4VwrBLhTDsUiEMu1QIwy4VwrBLhTDsUiHqrEF3SEQ8EBH/UVWEuabqXxQRGyJiS0TcGREH9364ksarzsz+KnBaZp4ALAGWR8TJwFeBb2TmMcBu4KLeDVNSp+pUhMnMfKXaPKj6S+A0YHXVb0UYqc/VXTd+WkQ8QmNt+HuBp4E9mbm3uslWGiWhhrvvxRHxUEQ81I0BSxqfWmHPzDcycwkwHzgJOK7uE2TmqsxcmplLxzlGSV0wpqPxmbkHuA9YBsyIiGatuPnAti6PTVIX1Tka/7sRMaNqHwqcQaOS633Ax6ubWRFG6nN1KsL8AY0DcNNo/OdwV2b+XUQcDdwBzAI2Ap/KzFdHeSyLREg9ZkUYqRBWhJEKZ9ilQhh2qRCGXSqEYZcKYdilQhh2qRCGXSqEYZcKYdilQhh2qRCGXSqEYZcKYdilQhh2qRCGXSqEYZcKUTvs1XLSGyNiXbVtRRhpgIxlZr+MxkKTTVaEkQZI3SIR84E/A26qtgMrwkgDpe7Mfh3wBeDNans2VoSRBkqddeM/DOzKzIfH8wRWhJH6w/TRb8IpwNkRcRZwCPBO4HqqijDV7G5FGKnP1aniujIz52fmQuB84CeZ+UmsCCMNlE6+Z78S+KuI2ELjM/zN3RmSpF6wIow0xVgRRiqcYZcKYdilQhh2qRCGXSqEYZcKYdilQhh2qRCGXSqEYZcKYdilQhh2qRCGXSqEYZcKYdilQhh2qRCGXSpEnQUniYhngZeBN4C9mbk0ImYBdwILgWeBczNzd2+GKalTY5nZ/zgzl7QtCb0CWJ+Zi4H11bakPtXJbvw5NCrBgBVhpL5XN+wJ3BMRD0fExVXfnMzcXrV3AHOGu6MVYaT+UGt12YiYl5nbIuJI4F7gUmBtZs5ou83uzJw5yuO4uqzUYx2tLpuZ26rLXcDdwEnAzoiYC1Bd7urOUCX1Qp1ab4dHxDuabeBDwKPAWhqVYMCKMFLfG3U3PiKOpjGbQ+Orun/JzGsjYjZwF3AU8ByNr95eHOWx3I2Xemyk3XgrwkhTjBVhpMIZdqkQhl0qhGGXCmHYpUIYdqkQhl0qhGGXCmHYpUIYdqkQhl0qRK016KTJNqdaG+Varm31fYyPtdpHcMSQ+6xjHQCf5bOtvp3s7NUQ+54zu1QIwy4Vwp+4qu+8k3cC8E2+2eo7ndMBmMvcVl9S759T+278LdzSjSH2NX/iKhXOmV195+5qYaSzOXvIdS+ybzGkK7ii1Z5BY+3TS7m01XcMxwBwD/e0+j7BJwB4hVe6OOL+0tHMHhEzImJ1RDwREZsiYllEzIqIeyPiqerygCvLSppcdXfjrwd+lJnHAScAm7AijDRQRv2ePSKOAP4I+DRAZr4GvBYR5wCnVje7FfgpcGUvBqmp74t8sdVezvIh1+9hDwBncVar70EeHHK79/G+Vru5G38mZ7b65jEPgM1s7nDEg6fOzL4IeAH4dkRsjIibqiWlrQgjDZA6Z9BNB94PXJqZGyLiet6yy56ZOdLBt8xcBawCD9Bpf+1nwK1o+yd1MAcD+2ZzgI/wEWD/2fwQDmm1b+bmIY/Z1H7WXPNMPGf24W0Ftmbmhmp7NY3wWxFGGiCjhj0zdwDPR8SxVdfpwONYEUYaKHV/CHMpcFtEHAz8CvhzGv9R3BURF1FVhOnNEDXVNHelV7O61dd+Ntxv+A0AN3BDq+/n/HzI43yFr7TaF3DBiM/3NE+32otZDMD93D/WYQ+8WmHPzEeApcNcdXp3hyOpV/yJqyZc82Ba+2ze3v4W3wLgS3zpgI/T/jXcgc6Tf4AHWu32r+ZK47nxUiEMu1QId+M1Ia7m6lb7A3xgyPXXcV2rfSM3jvg47+W9rXbzbLiRrGQlAD/gB62+y7l89MFOUc7sUiEMu1QId+M1IS7hklZ7FrOA/U9j/Rpfa7V3sGPExzmUQ1vt5mm17dpPsV3DGmDfyjejPfZU58wuFcKZXZOmfWZ/iZdq3Wcb21rt9lVr3s27gX0r1gAcyZHA/mffLWHJ+AY7BTizS4Uw7FIh3I3XhAhiSLt90cff8tsh9zmMw1rtEzkR2P937+3LSjdtZ3ur3f4DmKaf8bOxDHtKcWaXCuHMrgnRPnM3f7TSnK0BvsyXW+2XeRmAZSxr9TWXlW7fQxjuxy/NH9nA8HXdnuTJMY99qnBmlwph2KVC1FlK+ljgzrauo4GrgX+q+hcCzwLnZubu7g9RU8F5nNdqr2UtALOZ3eq7iqu68jzNjwAaqs4adJszc0lmLgH+EPg/4G4sEiENlLHuxp8OPJ2ZzwHn0CgOQXX50W4OTFJ3jfVo/PnA7VW7VpEICeAX/KLVbi4keWFrcWLYy95W+zVeG3L/H/JDAD7P5w/4PMNViVFD7Zm9Wln2bOA7b70uG6Vgh10EzIowUn+oXbK5qu32ucz8ULW9GTg1M7dXRSJ+mpnHjvIYVoRRS/tPT1/n9VZ7uLPpmt7kzVZ7uO/Zmz9+gX1LUpemo5LNlQvYtwsPFomQBkqtmb0q5Phr4OjMfKnqmw3cBRxFVSQiM18c+VGc2bU/Z/beGGlmr70b3w2GXZ26iZta7c/wmSHXX9lWNby5+k2zCgzs+x5+Kq9Y043deEkDzB/CaKC0l2Q+UBWYdu0fEd7gja6PaVA4s0uFMOxSITxAp4Ey2tH4pW3FhjeycULG1G88QCcVzrBLhfBovKaE5vfnz/DMJI+kfzmzS4VwZtdAaV8wcgELWu1zORfYv9ab9ufMLhXCsEuF8Ht2aYrxe3apcIZdKoRhlwph2KVC1Ap7RFwREY9FxKMRcXtEHBIRiyJiQ0RsiYg7q9VnJfWpUcMeEfOAvwSWZubvA9NorB//VeAbmXkMsBu4qJcDldSZurvx04FDI2I6cBiwHTgNWF1db0UYqc/VqfW2DfgHGqvLbgdeAh4G9mRms4zHVmBerwYpqXN1duNn0qjrtgj4PeBwYHndJ7AijNQf6vwQ5k+AZzLzBYCIWAOcAsyIiOnV7D4f2DbcnTNzFbCquq9n0EmTpM5n9l8DJ0fEYRERNCq5Pg7cB3y8uo0VYaQ+V7cizDXAecBeYCPwFzQ+o98BzKr6PpWZr47yOM7sUo9ZEUYqhD+EkQpn2KVCGHapEIZdKsRELzj538D/VpdTxbvw9fSrqfRaoN7rec9IV0zo0XiAiHgoM5eOfsvB4OvpX1PptUDnr8fdeKkQhl0qxGSEfdUkPGcv+Xr611R6LdDh65nwz+ySJoe78VIhJjTsEbE8IjZX69atmMjn7lRELIiI+yLi8Wo9vsuq/lkRcW9EPFVdzpzssY5FREyLiI0Rsa7aHti1BSNiRkSsjognImJTRCwb5Pen22s/TljYI2IacAPwp8DxwAURcfxEPX8X7AX+OjOPB04GPleNfwWwPjMXA+ur7UFyGbCpbXuQ1xa8HvhRZh4HnEDjdQ3k+9OTtR8zc0L+gGXAj9u2VwIrJ+r5e/B6vg+cAWwG5lZ9c4HNkz22MbyG+TQCcBqwDggaJ21MH+496+c/4AjgGarjUG39A/n+0PgJ+fM0fkI+vXp/zuzk/ZnI3fjm4JsGdt26iFgInAhsAOZk5vbqqh3AnEka1nhcB3wBeLPans3gri24CHgB+Hb1seSmiDicAX1/sgdrP3qAbowi4u3Ad4HLM/N/2q/Lxn+3A/H1RkR8GNiVmQ9P9li6ZDrwfuDGzDyRxmnZ++2yD9j709Haj8OZyLBvAxa0bY+4bl2/ioiDaAT9tsxcU3XvjIi51fVzgV2TNb4xOgU4OyKepbHi0Gk0PvPOqJYMh8F6j7YCWzNzQ7W9mkb4B/X9aa39mJmvA/ut/VjdZkzvz0SG/UFgcXU08WAaBxvWTuDzd6Raf+9mYFNmfr3tqrU01uCDAVqLLzNXZub8zFxI4734SWZ+kgFdWzAzdwDPR8SxVVdzrcSBfH/oxdqPE3zQ4SzgSeBp4G8m+yDIGMf+QRq7gP8JPFL9nUXjc+564CngX4FZkz3Wcby2U4F1Vfto4AFgC/Ad4G2TPb4xvI4lwEPVe/Q9YOYgvz/ANcATwKPAPwNv6+T98Qw6qRAeoJMKYdilQhh2qRCGXSqEYZcKYdilQhh2qRCGXSrE/wMmhLs8Y5LUIwAAAABJRU5ErkJggg==\n",
+      "text/plain": [
+       "<Figure size 432x288 with 1 Axes>"
+      ]
+     },
+     "metadata": {
+      "needs_background": "light"
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "filepath = dest + '/imgs_valid' + '/9/video_9.npy'\n",
+    "frames = np.load(filepath)\n",
+    "plot_videoframes(frames)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
