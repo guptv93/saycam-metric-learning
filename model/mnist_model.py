@@ -2,24 +2,29 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-class Flatten(nn.Module):
-    def forward(self, input):
-        return input.view(input.size(0), -1)
+conv1_in_ch = 1
+conv2_in_ch = 20
+fc1_in_features = 50*4*4
+fc2_in_features = 500
+n_classes = 10
+rep_features = 3
 
+class NetWithoutBatchNorm(nn.Module):
+    def __init__(self):
+        super(NetWithoutBatchNorm, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels=conv1_in_ch, out_channels=20, kernel_size=5, stride=1)
+        self.conv2 = nn.Conv2d(in_channels=conv2_in_ch, out_channels=50, kernel_size=5, stride=1)
+        self.fc1 = nn.Linear(in_features=fc1_in_features, out_features=500)
+        self.fc2 = nn.Linear(in_features=fc2_in_features, out_features=n_classes)
+        self.g = nn.Linear(in_features=n_classes, out_features=rep_features)
 
-model = nn.Sequential(nn.Conv2d(3, 10, kernel_size=5),
-                      nn.MaxPool2d(2, 2),
-                      nn.ReLU(),
-                      nn.Conv2d(10, 20, kernel_size=5),
-                      nn.MaxPool2d(2,2),
-                      nn.ReLU(),
-                      Flatten(),
-                      nn.Dropout(p=0.2),
-                      nn.Linear(6480,200),
-                      nn.ReLU(),
-                      nn.Dropout(p=0.2),
-                      nn.Linear(200,50), #Represenation Layer
-                      nn.ReLU(),
-                      nn.Linear(50,10),
-                      nn.ReLU(),
-                      nn.Linear(10, 2)) #Contrastive Loss Layer
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.max_pool2d(x, kernel_size=2, stride=2)
+        x = F.relu(self.conv2(x))
+        x = F.max_pool2d(x, kernel_size=2, stride=2)
+        x = x.view(-1, fc1_in_features) # reshaping
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.g(x)
+        return x
