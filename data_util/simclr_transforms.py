@@ -25,5 +25,5 @@ class RandomGaussianBluring(object):
         
         if np.random.uniform(0,1) < self.p:
             sigma = np.random.uniform(0.1, 2.0)
-            blur = cv2.GaussianBlur(sample, (self.kernel_size, self.kernel_size), sigma)
+            sample = cv2.GaussianBlur(sample, (self.kernel_size, self.kernel_size), sigma)
         return Image.fromarray(sample)
