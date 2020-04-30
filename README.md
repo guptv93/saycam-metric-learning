@@ -12,7 +12,7 @@ The idea of using temporal closeness for metric learning comes from the [this pa
 
 ### Setup
 
-The project uses PyTorch deep learning framework. The project folder structure is as follows:
+The project uses PyTorch deep learning framework. The folder structure is as follows:
 
     .
     ├── data_util/    Contains custom DataSet class, Transform class and Sampler classes. 
