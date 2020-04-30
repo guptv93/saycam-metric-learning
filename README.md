@@ -22,13 +22,13 @@ The project uses PyTorch deep learning framework. The folder structure is as fol
 
 `./data_util/custom_dataset.py` contains the custom DataSet class. It returns a tuple consisting of three tensors: (i) a minibatch of anchor frames (ii) corresponding positive frames (iii) class labels (video numberings).  It can work with the following data types:
 
-1. PIL files : The data is organized in pytorch's ImageFolder format. Each video has its own folder and the frames are named by their video timestamps.
+1. PIL files : The data is organized in pytorch's ImageFolder format. Each video has its own folder and the frames are image files (jpg, png, etc.) in that folder. File names should follow temporal ordering in the video.
 2. NPY files : Each video is converted into its own Numpy array of format `NxHxWxC`and placed in the root data folder. The frames are arranged timewise. 
 
-You can divide your videos into multiple mini videos of the same time frame. A pair of frames from the same video will act as (anchor frame, positive frame) pair. The `len` method of this DataSet class returns the number of such mini videos in the dataset.
+You can divide your videos into multiple mini-videos of smaller time-frames. A pair of frames from the same mini-video will act as a (anchor frame, positive frame) pair. The `len` method of this DataSet class returns the number of such mini-videos in the dataset.
 
-`./data_util/custom_sampler.py` contains the custom Sampler class. It is used to sample from a dataset of videos, so it uses a tuple of two integers for indexing. The first integer gives the video number and the second integer gives the frame number. 
+`./data_util/custom_sampler.py` contains the custom Sampler class. It is used to sample from the dataset of videos, so it uses a tuple of two integers for indexing. The first integer gives the video number and the second integer gives the frame number. 
 
-`./test_upstream.ipynb` contains a toy example for learning embeddings for MNIST digits in 2D/3D metric space. Though the dataset used in this example is not a video dataset, you can think of it as consisting 10 different videos each made up of images of a particular digit in 0-9.
+`./test_upstream.ipynb` contains a toy example for learning embeddings (using temporal constrastive loss) for MNIST digits in 2D/3D metric space. Though the dataset used in this example is not a video dataset, you can think of it as consisting 10 different videos each made up of images of a particular digit from 0 to 9.
 
-`./test_downstream.ipynb` trains a linear classifier on top of a frozen feature extractor trained with temporal contrastive loss (upstream task). 
+`./test_downstream.ipynb` trains a linear classifier on top of a frozen feature extractor. The feature extractor is trained by the upstream task using temporal constrastive loss. 
