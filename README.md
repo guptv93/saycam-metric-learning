@@ -14,13 +14,11 @@ The idea of using temporal closeness for metric learning comes from the [this pa
 
 The project uses PyTorch deep learning framework. The project folder structure is as follows:
 
-```javascript
-`root/`
-  `data_util/` - Contains custom DataSet class, Transform class and Sampler classes. 
-  `loss/` - Contains code for NPair Contrastive Loss.
-  `model/` - Contains the deep learning model class.
-  ``
-```
+    .
+    ├── data_util/    Contains custom DataSet class, Transform class and Sampler classes. 
+    ├── loss/         Contains code for NPair Contrastive Loss.
+    └── model/        Contains the deep learning model class.
+
 
 `./data_util/custom_dataset.py` contains the custom DataSet class. It returns a tuple consisting of three tensors: (i) a minibatch of anchor frames (ii) corresponding positive frames (iii) class labels (video numberings).  It can work with the following data types:
 
