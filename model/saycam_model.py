@@ -8,7 +8,7 @@ class SimCLRMobileNet(nn.Module):
         self.f = torchvision.models.mobilenet_v2(pretrained=False)
         self.f.classifier = nn.Identity()
         self.g = nn.Sequential(
-            nn.Linear(1000, 500), 
+            nn.Linear(1280, 500), 
             nn.ReLU(), 
             nn.Linear(500, z_dim)
         )

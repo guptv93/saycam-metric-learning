@@ -64,13 +64,12 @@ class FramePairsDataset(Dataset):
         for target in self.classes:
             d = os.path.join(dir, target)
             l = []
-            if not os.path.isdir(d):
-                continue
-            for root, _, fnames in sorted(os.walk(d, followlinks=True)):
-                for fname in sorted(fnames, key=self.sort_key):
-                    path = os.path.join(root, fname)
-                    if path.lower().endswith(self.IMG_EXTENSIONS):
-                        l.append(path)
+            for root, _, fnames in os.walk(d, followlinks=True):
+                for fname in fnames:
+                    if fname.lower().endswith(self.IMG_EXTENSIONS):
+                        fname = os.path.join(root, fname)
+                        l.append(fname)
+            l = sorted(l, key=self.sort_key)
             images[target] = l
         return images
     
